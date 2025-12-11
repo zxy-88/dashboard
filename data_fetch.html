@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ดึงข้อมูลรายงาน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        /* Chart Container Styles */
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .chart-card.visible {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .chart-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-title svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--primary-light);
+        }
+
+        .chart-stats {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .stat-badge {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-badge strong {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            min-height: 350px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .chart-wrapper {
+                height: 280px;
+            }
+
+            .chart-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .chart-stats {
+                flex-wrap: wrap;
+            }
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        /* Light Theme */
+        body.light-theme {
+            --bg-dark: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-input: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #cbd5e1;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 50%, #e2e8f0 100%);
+        }
+
+        body.light-theme .header h1 {
+            background: linear-gradient(135deg, #4f46e5, #6366f1, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Light theme chart label fix */
+        body.light-theme .chart-card {
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            border-color: var(--primary);
+        }
+
+        .theme-toggle svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--text-primary);
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover svg {
+            transform: rotate(15deg);
+        }
+
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon {
+            position: absolute;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .theme-toggle .icon-sun {
+            opacity: 0;
+            transform: rotate(-90deg);
+        }
+
+        .theme-toggle .icon-moon {
+            opacity: 1;
+            transform: rotate(0deg);
+        }
+
+        body.light-theme .theme-toggle .icon-sun {
+            opacity: 1;
+            transform: rotate(0deg);
+        }
+
+        body.light-theme .theme-toggle .icon-moon {
+            opacity: 0;
+            transform: rotate(90deg);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .filter-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group label svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--primary-light);
+        }
+
+        .form-group input[type="date"] {
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Prompt', sans-serif;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .form-group input[type="date"]:hover {
+            border-color: var(--primary-light);
+        }
+
+        .form-group input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        .btn-fetch {
+            padding: 0.875rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Prompt', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 52px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-fetch:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-fetch:active {
+            transform: translateY(0);
+        }
+
+        .btn-fetch:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-fetch svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-text {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-text.loading {
+            color: var(--warning);
+        }
+
+        .status-text.success {
+            color: var(--success);
+        }
+
+        .status-text.error {
+            color: var(--error);
+        }
+
+        .record-count {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:nth-child(even):hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            stroke: var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--error);
+            display: none;
+        }
+
+        /* Custom scrollbar */
+        .table-wrapper::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Search Box Styles */
+        .search-container {
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: 'Prompt', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 0.875rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .search-info {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .search-info strong {
+            color: var(--primary-light);
+        }
+
+        /* Sortable Table Headers */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 1.5rem;
+        }
+
+        th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0.4;
+            font-size: 0.8rem;
+        }
+
+        th.sortable.asc::after {
+            content: '↑';
+            opacity: 1;
+            color: #10b981;
+        }
+
+        th.sortable.desc::after {
+            content: '↓';
+            opacity: 1;
+            color: #f59e0b;
+        }
+
+        /* No results message */
+        .no-results {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .no-results svg {
+            width: 48px;
+            height: 48px;
+            stroke: var(--border-color);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .filter-card {
+                padding: 1.5rem;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="สลับธีม สว่าง/มืด">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+    </button>
+
+    <div class="container">
+        <div class="header">
+            <h1>ระบบดึงข้อมูลรายงาน</h1>
+            <p>เลือกช่วงวันที่และกดปุ่มเพื่อดึงข้อมูล</p>
+        </div>
+
+        <div class="filter-card">
+            <div class="filter-grid">
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        วันที่เริ่มต้น
+                    </label>
+                    <input type="date" id="startDate" value="2025-12-05">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        วันที่สิ้นสุด
+                    </label>
+                    <input type="date" id="endDate" value="2025-12-05">
+                </div>
+
+                <button class="btn-fetch" id="fetchBtn" onclick="fetchData()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        id="fetchIcon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span id="fetchText">ดึงข้อมูล</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="status-bar" id="statusBar" style="display: none;">
+            <div class="status-text" id="statusText">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20"
+                    height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span></span>
+            </div>
+            <div class="record-count" id="recordCount">0 รายการ</div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-card" id="chartCard">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    จำนวนงานแยกตามประเภท (stt_desc) ของแต่ละผู้ตรวจสอบ
+                </div>
+                <div class="chart-stats">
+                    <div class="stat-badge">
+                        👥 ผู้ตรวจสอบ: <strong id="totalCheckers">0</strong> คน
+                    </div>
+                    <div class="stat-badge">
+                        📋 งานทั้งหมด: <strong id="totalJobs">0</strong> งาน
+                    </div>
+                    <div class="stat-badge">
+                        🏷️ ประเภทงาน: <strong id="totalTypes">0</strong> ประเภท
+                    </div>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="checkbynameChart"></canvas>
+            </div>
+            <div id="chartLegend"
+                style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center;"></div>
+        </div>
+
+        <!-- Chart 2: CLAIM_NO Distribution by EMCSSTATUS -->
+        <div class="chart-card" id="chartCard2">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    การกระจายงาน "จบงาน" ตามเลขท้าย CLAIM_NO แยกตามสถานะ EMCSSTATUS
+                </div>
+                <div class="chart-stats">
+                    <div class="stat-badge">
+                        ✔️ งานจบงาน: <strong id="totalFinishedJobs">0</strong> งาน
+                    </div>
+                    <div class="stat-badge">
+                        � ผู้รับผิดชอบ: <strong id="totalAssignees">0</strong> คน
+                    </div>
+                    <div class="stat-badge">
+                        ✅ Send: <strong id="totalSend">0</strong> งาน
+                    </div>
+                    <div class="stat-badge">
+                        ⏳ Unsend: <strong id="totalUnsend">0</strong> งาน
+                    </div>
+                </div>
+            </div>
+            <div class="chart-wrapper" id="chartWrapper2" style="min-height: 350px;">
+                <canvas id="claimNoChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container" id="tableContainer" style="display: none;">
+            <div class="search-container">
+                <div class="search-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="ค้นหาข้อมูล... (ทุกคอลัมน์)"
+                        oninput="filterTable()">
+                </div>
+                <div class="search-info">
+                    แสดง <strong id="filteredCount">0</strong> จาก <strong id="totalCount">0</strong> รายการ
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3>ยังไม่มีข้อมูล</h3>
+            <p>กรุณาเลือกช่วงวันที่และกดปุ่ม "ดึงข้อมูล"</p>
+        </div>
+    </div>
+
+    <script>
+        // ฟังก์ชันตรวจสอบธีมปัจจุบัน
+        function isLightTheme() {
+            return document.body.classList.contains('light-theme');
+        }
+
+        // ฟังก์ชันดึงสีสำหรับ chart labels ตามธีม
+        function getChartLabelColor() {
+            return isLightTheme() ? '#1e293b' : '#f1f5f9';
+        }
+
+        function getChartSecondaryColor() {
+            return isLightTheme() ? '#64748b' : '#94a3b8';
+        }
+
+        // เก็บข้อมูลสำหรับ re-render กราฟเมื่อเปลี่ยนธีม
+        let lastChartData = null;
+
+        // ฟังก์ชันสลับธีม
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+
+            // Re-render กราฟถ้ามีข้อมูล
+            if (lastChartData && lastChartData.length > 0) {
+                renderCheckbynameChart(lastChartData);
+                renderClaimNoChart(lastChartData);
+            }
+        }
+
+        // โหลดธีมจาก localStorage เมื่อเริ่มต้น
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+            }
+        })();
+
+        // ฟังก์ชันดึงข้อมูล
+        async function fetchData() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const fetchBtn = document.getElementById('fetchBtn');
+            const fetchIcon = document.getElementById('fetchIcon');
+            const fetchText = document.getElementById('fetchText');
+            const errorMessage = document.getElementById('errorMessage');
+            const statusBar = document.getElementById('statusBar');
+            const statusText = document.getElementById('statusText');
+            const tableContainer = document.getElementById('tableContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            // Validate dates
+            if (!startDate || !endDate) {
+                showError('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                showError('วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด');
+                return;
+            }
+
+            // แปลงรูปแบบวันที่
+            const startParts = startDate.split('-');
+            const endParts = endDate.split('-');
+
+            const sd = startParts[2]; // day
+            const sm = startParts[1]; // month
+            const sy = startParts[0]; // year
+
+            const ed = endParts[2];
+            const em = endParts[1];
+            const ey = endParts[0];
+
+            // สร้าง URL (ผ่าน Flask server)
+            const url = `/api/fetch-data?start_date=${startDate}&end_date=${endDate}`;
+
+            // Show loading state
+            fetchBtn.disabled = true;
+            fetchText.textContent = 'กำลังดึงข้อมูล...';
+            fetchIcon.innerHTML = '<circle class="spinner" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="30 70" />';
+            fetchIcon.classList.add('spinner');
+
+            hideError();
+            statusBar.style.display = 'flex';
+            statusText.className = 'status-text loading';
+            statusText.innerHTML = `
+                <svg class="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="30 70" />
+                </svg>
+                <span>กำลังดึงข้อมูล...</span>
+            `;
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+
+                // Check for error from server
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                const arrData = result.data || [];
+
+                if (arrData.length === 0) {
+                    emptyState.style.display = 'block';
+                    tableContainer.style.display = 'none';
+                    document.getElementById('chartCard').classList.remove('visible');
+                    document.getElementById('chartCard2').classList.remove('visible');
+                    statusText.className = 'status-text';
+                    statusText.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>ไม่พบข้อมูลในช่วงวันที่ที่เลือก</span>
+                    `;
+                    document.getElementById('recordCount').textContent = '0 รายการ';
+                } else {
+                    // Save data for re-render when theme changes
+                    lastChartData = arrData;
+
+                    // Render charts and table
+                    renderCheckbynameChart(arrData);
+                    renderClaimNoChart(arrData);
+                    renderTable(arrData);
+
+                    emptyState.style.display = 'none';
+                    tableContainer.style.display = 'block';
+                    statusText.className = 'status-text success';
+                    statusText.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>ดึงข้อมูลสำเร็จ (${startDate} ถึง ${endDate})</span>
+                    `;
+                    document.getElementById('recordCount').textContent = `${arrData.length} รายการ`;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`เกิดข้อผิดพลาด: ${error.message}`);
+                statusText.className = 'status-text error';
+                statusText.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>เกิดข้อผิดพลาดในการดึงข้อมูล</span>
+                `;
+            } finally {
+                // Reset button
+                fetchBtn.disabled = false;
+                fetchText.textContent = 'ดึงข้อมูล';
+                fetchIcon.classList.remove('spinner');
+                fetchIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />';
+            }
+        }
+
+        // ตัวแปรเก็บข้อมูลตารางสำหรับ filter และ sort
+        let tableData = [];
+        let tableColumns = [];
+        let currentSortColumn = null;
+        let currentSortDirection = 'asc';
+
+        // ฟังก์ชันสร้างตาราง (DataFrame-like display)
+        function renderTable(data) {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+
+            // Clear previous data
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            // เก็บข้อมูลไว้สำหรับ filter และ sort
+            tableData = [...data];
+
+            // กำหนดคอลัมน์ที่ต้องการแสดงและลำดับ
+            const desiredColumns = [
+                'claim_no',
+                'notify_no',
+                'survey_no',
+                'empcode',
+                'checkByName',
+                'checker_dt',
+                'stt_desc',
+                'EMCSby',
+                'EMCSdate',
+                'EMCSstatus'
+            ];
+
+            // หา field ที่มีอยู่จริงใน data (case-insensitive matching)
+            const availableFields = Object.keys(data[0]);
+            tableColumns = desiredColumns.map(col => {
+                const found = availableFields.find(f => f.toLowerCase() === col.toLowerCase());
+                return found || col;
+            });
+
+            // Reset sort state
+            currentSortColumn = null;
+            currentSortDirection = 'asc';
+
+            // Create header row with sortable columns
+            createTableHeader();
+
+            // Render data rows
+            renderTableRows(tableData);
+
+            // Update counts
+            updateSearchCounts(tableData.length, tableData.length);
+
+            // Clear search input
+            document.getElementById('searchInput').value = '';
+        }
+
+        // Mapping ชื่อคอลัมน์ภาษาไทย
+        const columnDisplayNames = {
+            'claim_no': 'เลขเคลม',
+            'notify_no': 'เลขรับแจ้ง',
+            'survey_no': 'เลขเซอร์เวย์',
+            'empcode': 'พนักงานสำรวจ',
+            'checkbyname': 'ผู้ตรวจสอบ',
+            'checker_dt': 'วันตรวจสอบ',
+            'stt_desc': 'สถานะงาน',
+            'emcsby': 'ผู้คีย์',
+            'emcsdate': 'วันคีย์',
+            'emcsstatus': 'สถานะงานคีย์'
+        };
+
+        // ฟังก์ชันแปลงชื่อคอลัมน์เป็นภาษาไทย
+        function getColumnDisplayName(colName) {
+            const lowerName = colName.toLowerCase();
+            return columnDisplayNames[lowerName] || colName;
+        }
+
+        // สร้าง header row พร้อม sortable
+        function createTableHeader() {
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = '';
+
+            const headerRow = document.createElement('tr');
+
+            // Add index column (not sortable)
+            const indexTh = document.createElement('th');
+            indexTh.textContent = '#';
+            headerRow.appendChild(indexTh);
+
+            tableColumns.forEach((col, colIndex) => {
+                const th = document.createElement('th');
+                th.textContent = getColumnDisplayName(col);
+                th.className = 'sortable';
+                th.dataset.column = col;
+                th.dataset.index = colIndex;
+                th.onclick = () => sortTable(col);
+
+                // Add sort indicator if this is the current sort column
+                if (currentSortColumn === col) {
+                    th.classList.add(currentSortDirection);
+                }
+
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+        }
+
+        // Render table rows
+        function renderTableRows(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="${tableColumns.length + 1}" class="no-results">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>ไม่พบข้อมูลที่ตรงกับคำค้นหา</div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                return;
+            }
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+
+                // Add index cell
+                const indexTd = document.createElement('td');
+                indexTd.textContent = index + 1;
+                indexTd.style.fontWeight = '600';
+                indexTd.style.color = 'var(--primary-light)';
+                tr.appendChild(indexTd);
+
+                tableColumns.forEach(col => {
+                    const td = document.createElement('td');
+                    const value = row[col];
+                    td.textContent = value !== null && value !== undefined ? value : '-';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ฟังก์ชันค้นหา (filter)
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            if (searchTerm === '') {
+                // If no search term, show all data
+                renderTableRows(tableData);
+                updateSearchCounts(tableData.length, tableData.length);
+                return;
+            }
+
+            // Filter data across all columns
+            const filteredData = tableData.filter(row => {
+                return tableColumns.some(col => {
+                    const value = row[col];
+                    if (value === null || value === undefined) return false;
+                    return value.toString().toLowerCase().includes(searchTerm);
+                });
+            });
+
+            // Re-render with filtered data
+            renderTableRows(filteredData);
+            updateSearchCounts(filteredData.length, tableData.length);
+        }
+
+        // ฟังก์ชัน sort
+        function sortTable(column) {
+            // Toggle direction if same column, else reset to asc
+            if (currentSortColumn === column) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+
+            // Sort the data
+            tableData.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                // Handle null/undefined
+                if (valA === null || valA === undefined) valA = '';
+                if (valB === null || valB === undefined) valB = '';
+
+                // Convert to string for comparison
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
+
+                // Try numeric comparison if both are numbers
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+                }
+
+                // String comparison
+                if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-render table
+            createTableHeader();
+            filterTable(); // Re-apply any active filter
+        }
+
+        // อัพเดทจำนวนผลลัพธ์การค้นหา
+        function updateSearchCounts(filtered, total) {
+            document.getElementById('filteredCount').textContent = filtered;
+            document.getElementById('totalCount').textContent = total;
+        }
+
+        // ตัวแปรเก็บ chart instance
+        let checkbynameChartInstance = null;
+
+        // ฟังก์ชันสร้างกราฟ checkbyname แยกตาม stt_desc (Stacked Bar Chart)
+        function renderCheckbynameChart(data) {
+            const chartCard = document.getElementById('chartCard');
+            const canvas = document.getElementById('checkbynameChart');
+            const ctx = canvas.getContext('2d');
+
+            // Debug: แสดงข้อมูลตัวอย่าง
+            console.log('📊 Total data rows:', data.length);
+            if (data.length > 0) {
+                console.log('📋 Sample data (first row):', data[0]);
+                console.log('🔑 Available fields:', Object.keys(data[0]));
+            }
+
+            // หา field ที่ตรงกับ checkbyname และ stt_desc (case-insensitive)
+            let checkbynameField = null;
+            let sttDescField = null;
+            if (data.length > 0) {
+                const fields = Object.keys(data[0]);
+                checkbynameField = fields.find(f => f.toLowerCase() === 'checkbyname');
+                sttDescField = fields.find(f => f.toLowerCase() === 'stt_desc');
+                console.log('🔍 Found checkbyname field:', checkbynameField);
+                console.log('🔍 Found stt_desc field:', sttDescField);
+            }
+
+            // สร้าง nested counts: { name: { stt_desc: count } }
+            const nestedCounts = {};
+            const allSttDescs = new Set();
+
+            data.forEach(row => {
+                let name = 'ไม่ระบุ';
+                let sttDesc = 'ไม่ระบุประเภท';
+
+                if (checkbynameField && row[checkbynameField]) {
+                    name = row[checkbynameField];
+                }
+                if (sttDescField && row[sttDescField]) {
+                    sttDesc = row[sttDescField];
+                }
+
+                allSttDescs.add(sttDesc);
+
+                if (!nestedCounts[name]) {
+                    nestedCounts[name] = {};
+                }
+                nestedCounts[name][sttDesc] = (nestedCounts[name][sttDesc] || 0) + 1;
+            });
+
+            console.log('📈 Nested counts:', nestedCounts);
+            console.log('🏷️ All stt_desc types:', Array.from(allSttDescs));
+
+            // คำนวณผลรวมของแต่ละคน และเรียงจากมากไปน้อย
+            const totals = {};
+            Object.keys(nestedCounts).forEach(name => {
+                totals[name] = Object.values(nestedCounts[name]).reduce((a, b) => a + b, 0);
+            });
+
+            const sortedNames = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+            const sttDescArray = Array.from(allSttDescs).sort();
+
+            console.log('✅ Sorted names:', sortedNames);
+            console.log('✅ stt_desc types:', sttDescArray);
+
+            // อัพเดท stats
+            document.getElementById('totalCheckers').textContent = sortedNames.length;
+            document.getElementById('totalJobs').textContent = data.length;
+            document.getElementById('totalTypes').textContent = sttDescArray.length;
+
+            // สร้างสีสำหรับแต่ละ stt_desc
+            const colorPalette = [
+                { bg: 'rgba(99, 102, 241, 0.85)', border: 'rgba(99, 102, 241, 1)' },     // Indigo
+                { bg: 'rgba(16, 185, 129, 0.85)', border: 'rgba(16, 185, 129, 1)' },     // Emerald
+                { bg: 'rgba(245, 158, 11, 0.85)', border: 'rgba(245, 158, 11, 1)' },     // Amber
+                { bg: 'rgba(239, 68, 68, 0.85)', border: 'rgba(239, 68, 68, 1)' },       // Red
+                { bg: 'rgba(168, 85, 247, 0.85)', border: 'rgba(168, 85, 247, 1)' },     // Purple
+                { bg: 'rgba(236, 72, 153, 0.85)', border: 'rgba(236, 72, 153, 1)' },     // Pink
+                { bg: 'rgba(14, 165, 233, 0.85)', border: 'rgba(14, 165, 233, 1)' },     // Sky
+                { bg: 'rgba(132, 204, 22, 0.85)', border: 'rgba(132, 204, 22, 1)' },     // Lime
+                { bg: 'rgba(251, 146, 60, 0.85)', border: 'rgba(251, 146, 60, 1)' },     // Orange
+                { bg: 'rgba(34, 211, 238, 0.85)', border: 'rgba(34, 211, 238, 1)' },     // Cyan
+                { bg: 'rgba(244, 114, 182, 0.85)', border: 'rgba(244, 114, 182, 1)' },   // Rose
+                { bg: 'rgba(74, 222, 128, 0.85)', border: 'rgba(74, 222, 128, 1)' },     // Green
+            ];
+
+            // สร้าง datasets สำหรับแต่ละ stt_desc
+            const datasets = sttDescArray.map((sttDesc, index) => {
+                const colorIndex = index % colorPalette.length;
+                const dataValues = sortedNames.map(name => {
+                    return nestedCounts[name][sttDesc] || 0;
+                });
+
+                return {
+                    label: sttDesc,
+                    data: dataValues,
+                    backgroundColor: colorPalette[colorIndex].bg,
+                    borderColor: colorPalette[colorIndex].border,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false
+                };
+            });
+
+            // ลบ chart เดิมถ้ามี
+            if (checkbynameChartInstance) {
+                checkbynameChartInstance.destroy();
+            }
+
+            // สร้าง chart ใหม่ (Stacked Horizontal Bar Chart)
+            checkbynameChartInstance = new Chart(ctx, {
+                type: 'bar',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: sortedNames,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y', // กราฟแท่งแนวนอน
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: getChartLabelColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleFont: {
+                                family: 'Prompt',
+                                size: 14,
+                                weight: '600'
+                            },
+                            bodyFont: {
+                                family: 'Prompt',
+                                size: 13
+                            },
+                            padding: 12,
+                            cornerRadius: 10,
+                            displayColors: true,
+                            callbacks: {
+                                title: function (context) {
+                                    return '👤 ' + context[0].label;
+                                },
+                                label: function (context) {
+                                    const name = context.label;
+                                    const sttDesc = context.dataset.label;
+                                    const value = context.raw;
+                                    const total = totals[name];
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${sttDesc}: ${value} งาน (${percentage}%)`;
+                                },
+                                afterBody: function (context) {
+                                    const name = context[0].label;
+                                    return [`📊 รวมทั้งหมด: ${totals[name]} งาน`];
+                                }
+                            }
+                        },
+                        // Data labels แสดงตัวเลขบนแท่งกราฟ
+                        datalabels: {
+                            display: function (context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            color: '#ffffff',
+                            anchor: 'center',
+                            align: 'center',
+                            font: {
+                                family: 'Prompt',
+                                size: 10,
+                                weight: '600'
+                            },
+                            formatter: function (value) {
+                                return value > 0 ? value : '';
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            right: 20
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: getChartSecondaryColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'จำนวนงาน',
+                                color: getChartSecondaryColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 13,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: getChartLabelColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // ปรับความสูงกราฟตามจำนวนคน (50px ต่อคน, minimum 400px)
+            const chartHeight = Math.max(400, sortedNames.length * 50);
+            document.querySelector('.chart-wrapper').style.height = chartHeight + 'px';
+
+            // แสดง chart card
+            chartCard.classList.add('visible');
+        }
+
+        // ตัวแปรเก็บ chart instance สำหรับ CLAIM_NO
+        let claimNoChartInstance = null;
+
+        // ฟังก์ชันแปลงเลขท้าย CLAIM_NO เป็นชื่อผู้รับผิดชอบ
+        function getAssigneeByClaimNo(claimNo) {
+            if (!claimNo || claimNo.toString().trim() === '') {
+                return 'ไม่ระบุ';
+            }
+
+            const claimNoStr = claimNo.toString().trim();
+            const lastDigit = claimNoStr.charAt(claimNoStr.length - 1);
+
+            switch (lastDigit) {
+                case '0':
+                case '1':
+                    return 'วรนุช น้ำพุ';
+                case '2':
+                case '3':
+                    return 'กัยญารัตน์ เสนดำ';
+                case '4':
+                case '5':
+                    return 'วิสุดา ดอนหมัน';
+                case '6':
+                case '7':
+                    return 'นิสากร เปรมปรีดิ์';
+                case '8':
+                case '9':
+                    return 'สุทิษา พงษ์แขก';
+                default:
+                    return 'ไม่ระบุ';
+            }
+        }
+
+        // ฟังก์ชันสร้างกราฟ CLAIM_NO Distribution (Stacked Horizontal Bar Chart)
+        function renderClaimNoChart(data) {
+            const chartCard = document.getElementById('chartCard2');
+            const canvas = document.getElementById('claimNoChart');
+            const ctx = canvas.getContext('2d');
+
+            // หา field ที่ตรงกับ CLAIM_NO, EMCSSTATUS, EMCSby และ stt_desc (case-insensitive)
+            let claimNoField = null;
+            let emcsStatusField = null;
+            let emcsByField = null;
+            let sttDescField = null;
+            if (data.length > 0) {
+                const fields = Object.keys(data[0]);
+                claimNoField = fields.find(f => f.toLowerCase() === 'claim_no');
+                emcsStatusField = fields.find(f => f.toLowerCase() === 'emcsstatus');
+                emcsByField = fields.find(f => f.toLowerCase() === 'emcsby');
+                sttDescField = fields.find(f => f.toLowerCase() === 'stt_desc');
+                console.log('🔍 Found CLAIM_NO field:', claimNoField);
+                console.log('🔍 Found EMCSSTATUS field:', emcsStatusField);
+                console.log('🔍 Found EMCSby field:', emcsByField);
+                console.log('🔍 Found stt_desc field:', sttDescField);
+            }
+
+            // กรองเฉพาะข้อมูลที่ stt_desc = "จบงาน" เท่านั้น
+            const filteredData = data.filter(row => {
+                if (sttDescField && row[sttDescField]) {
+                    return row[sttDescField].toString().trim() === 'จบงาน';
+                }
+                return false;
+            });
+
+            console.log('📊 Total data rows:', data.length);
+            console.log('📊 Filtered data (จบงาน only):', filteredData.length);
+
+            // สร้าง nested counts: { assignee: { status: count } }
+            const nestedCounts = {};
+            let totalSend = 0;
+            let totalUnsend = 0;
+
+            filteredData.forEach(row => {
+                // ตรวจสอบ EMCSSTATUS
+                let emcsStatus = '';
+                if (emcsStatusField && row[emcsStatusField]) {
+                    emcsStatus = row[emcsStatusField].toString().trim().toLowerCase();
+                }
+
+                let assignee = 'ไม่ระบุ';
+                let status = 'unsend';
+
+                if (emcsStatus === 'send') {
+                    // ถ้า EMCSSTATUS = send ให้ใช้ชื่อจาก EMCSby
+                    status = 'send';
+                    totalSend++;
+
+                    if (emcsByField && row[emcsByField]) {
+                        assignee = row[emcsByField].toString().trim();
+                        if (assignee === '') {
+                            assignee = 'ไม่ระบุ';
+                        }
+                    }
+                } else {
+                    // ถ้า EMCSSTATUS ไม่ใช่ send ให้ใช้เลขท้าย claim_no
+                    status = 'unsend';
+                    totalUnsend++;
+
+                    let claimNo = '';
+                    if (claimNoField && row[claimNoField]) {
+                        claimNo = row[claimNoField].toString().trim();
+                    }
+
+                    if (claimNo === '') {
+                        assignee = 'ไม่ระบุ';
+                    } else {
+                        assignee = getAssigneeByClaimNo(claimNo);
+                    }
+                }
+
+                if (!nestedCounts[assignee]) {
+                    nestedCounts[assignee] = { send: 0, unsend: 0 };
+                }
+                nestedCounts[assignee][status]++;
+            });
+
+            console.log('📈 Nested counts by assignee and status:', nestedCounts);
+
+            // คำนวณผลรวมของแต่ละคน และเรียงจากมากไปน้อย
+            const totals = {};
+            Object.keys(nestedCounts).forEach(assignee => {
+                totals[assignee] = nestedCounts[assignee].send + nestedCounts[assignee].unsend;
+            });
+
+            const sortedAssignees = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+            const statusArray = ['send', 'unsend'];
+
+            console.log('✅ Sorted assignees:', sortedAssignees);
+
+            // อัพเดท stats
+            document.getElementById('totalFinishedJobs').textContent = filteredData.length;
+            document.getElementById('totalAssignees').textContent = sortedAssignees.length;
+            document.getElementById('totalSend').textContent = totalSend;
+            document.getElementById('totalUnsend').textContent = totalUnsend;
+
+            // สีสำหรับ send และ unsend
+            const statusColors = {
+                send: { bg: 'rgba(16, 185, 129, 0.85)', border: 'rgba(16, 185, 129, 1)' },     // Emerald - send
+                unsend: { bg: 'rgba(245, 158, 11, 0.85)', border: 'rgba(245, 158, 11, 1)' }    // Amber - unsend
+            };
+
+            // สร้าง datasets สำหรับ send และ unsend
+            const datasets = statusArray.map(status => {
+                const dataValues = sortedAssignees.map(assignee => {
+                    return nestedCounts[assignee][status] || 0;
+                });
+
+                return {
+                    label: status === 'send' ? '✅ Send' : '⏳ Unsend',
+                    data: dataValues,
+                    backgroundColor: statusColors[status].bg,
+                    borderColor: statusColors[status].border,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false
+                };
+            });
+
+            // ลบ chart เดิมถ้ามี
+            if (claimNoChartInstance) {
+                claimNoChartInstance.destroy();
+            }
+
+            // สร้าง chart ใหม่ (Stacked Horizontal Bar Chart)
+            claimNoChartInstance = new Chart(ctx, {
+                type: 'bar',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: sortedAssignees,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y', // กราฟแท่งแนวนอน
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: getChartLabelColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleFont: {
+                                family: 'Prompt',
+                                size: 14,
+                                weight: '600'
+                            },
+                            bodyFont: {
+                                family: 'Prompt',
+                                size: 13
+                            },
+                            padding: 12,
+                            cornerRadius: 10,
+                            displayColors: true,
+                            callbacks: {
+                                title: function (context) {
+                                    const assignee = context[0].label;
+                                    let digits = '';
+                                    if (assignee === 'วรนุช น้ำพุ') digits = ' (เลขท้าย: 0, 1)';
+                                    else if (assignee === 'กัยญารัตน์ เสนดำ') digits = ' (เลขท้าย: 2, 3)';
+                                    else if (assignee === 'วิสุดา ดอนหมัน') digits = ' (เลขท้าย: 4, 5)';
+                                    else if (assignee === 'นิสากร เปรมปรีดิ์') digits = ' (เลขท้าย: 6, 7)';
+                                    else if (assignee === 'สุทิษา พงษ์แขก') digits = ' (เลขท้าย: 8, 9)';
+                                    return '👤 ' + assignee + digits;
+                                },
+                                label: function (context) {
+                                    const assignee = context.label;
+                                    const status = context.dataset.label;
+                                    const value = context.raw;
+                                    const total = totals[assignee];
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${status}: ${value} งาน (${percentage}%)`;
+                                },
+                                afterBody: function (context) {
+                                    const assignee = context[0].label;
+                                    return [`📊 รวมทั้งหมด: ${totals[assignee]} งาน`];
+                                }
+                            }
+                        },
+                        // Data labels แสดงตัวเลขบนแท่งกราฟ
+                        datalabels: {
+                            display: function (context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            color: '#ffffff',
+                            anchor: 'center',
+                            align: 'center',
+                            font: {
+                                family: 'Prompt',
+                                size: 10,
+                                weight: '600'
+                            },
+                            formatter: function (value) {
+                                return value > 0 ? value : '';
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            right: 20
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: getChartSecondaryColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'จำนวนงาน',
+                                color: getChartSecondaryColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 13,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: getChartLabelColor(),
+                                font: {
+                                    family: 'Prompt',
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // ปรับความสูงกราฟตามจำนวนคน (50px ต่อคน, minimum 350px)
+            const chartHeight = Math.max(350, sortedAssignees.length * 50);
+            document.getElementById('chartWrapper2').style.height = chartHeight + 'px';
+
+            // แสดง chart card
+            chartCard.classList.add('visible');
+        }
+
+        // ฟังก์ชันแสดง error
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        // ฟังก์ชันซ่อน error
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Set default dates to today
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+        });
+    </script>
+</body>
+
+</html>
