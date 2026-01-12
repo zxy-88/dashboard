@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าต่างค้นหา</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .search-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: 'Prompt', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-search {
+            padding: 0.875rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Prompt', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            width: 100%;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .result-info {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-count {
+            color: var(--text-secondary);
+        }
+
+        .result-count strong {
+            color: var(--primary-light);
+        }
+
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:nth-child(even):hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .index-cell {
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'Prompt', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .pagination button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .table-wrapper::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>หน้าต่างค้นหา</h1>
+        </div>
+
+        <div class="search-card">
+            <div class="search-grid">
+                <div class="form-group">
+                    <label>เลขเคลม / เลขรับแจ้ง / เลขเซอร์เวย์</label>
+                    <input type="text" id="searchNumber" placeholder="ค้นหา...">
+                </div>
+                <div class="form-group">
+                    <label>พนักงานสำรวจ</label>
+                    <select id="empCode">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ผู้ตรวจสอบ</label>
+                    <select id="checkByName">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>สถานะงาน</label>
+                    <select id="sttDesc">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ผู้คีย์</label>
+                    <select id="emcsBy">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>สถานะงานคีย์</label>
+                    <select id="emcsStatus">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-search" onclick="performSearch()">ค้นหา</button>
+        </div>
+
+        <div class="result-info" id="resultInfo" style="display: none;">
+            <div class="result-count">
+                พบข้อมูล <strong id="totalResults">0</strong> รายการ |
+                แสดงหน้า <strong id="currentPageDisplay">1</strong> จาก <strong id="totalPagesDisplay">1</strong>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="searchTable">
+                    <thead id="searchTableHead">
+                    </thead>
+                    <tbody id="searchTableBody">
+                        <tr>
+                            <td colspan="100" class="empty-state">
+                                กรุณากรอกเงื่อนไขการค้นหาและกดปุ่ม "ค้นหา"
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script>
+        // ข้อมูลจะถูกส่งมาจากหน้าหลัก
+        let allData = [];
+        let columns = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 100;
+
+        const columnDisplayNames = {
+            'claim_no': 'เลขเคลม',
+            'notify_no': 'เลขรับแจ้ง',
+            'survey_no': 'เลขเซอร์เวย์',
+            'empcode': 'พนักงานสำรวจ',
+            'checkbyname': 'ผู้ตรวจสอบ',
+            'checker_dt': 'วันตรวจสอบ',
+            'stt_desc': 'สถานะงาน',
+            'emcsby': 'ผู้คีย์',
+            'emcsdate': 'วันคีย์',
+            'emcsstatus': 'สถานะงานคีย์'
+        };
+
+        function getColumnDisplayName(colName) {
+            const lowerName = colName.toLowerCase();
+            return columnDisplayNames[lowerName] || colName;
+        }
+
+        // รับข้อมูลจาก window.opener (ไม่มีขีดจำกัดขนาด)
+        window.addEventListener('load', function () {
+            // เข้าถึงข้อมูลจากหน้าหลักโดยตรงผ่าน window.opener
+            if (window.opener && window.opener.tableData && window.opener.tableColumns) {
+                allData = window.opener.tableData;
+                columns = window.opener.tableColumns;
+
+                // สร้างหัวตาราง
+                createTableHeader();
+
+                // เติมข้อมูลใน dropdowns
+                populateDropdowns();
+            } else {
+                // แสดงข้อความถ้าไม่มีข้อมูล
+                document.getElementById('searchTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="100" class="empty-state">
+                            ไม่พบข้อมูล กรุณาดึงข้อมูลจากหน้าหลักก่อน
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        function createTableHeader() {
+            const thead = document.getElementById('searchTableHead');
+            let headerHTML = '<tr><th>#</th>';
+            columns.forEach(col => {
+                headerHTML += `<th>${getColumnDisplayName(col)}</th>`;
+            });
+            headerHTML += '</tr>';
+            thead.innerHTML = headerHTML;
+        }
+
+        function populateDropdowns() {
+            // พนักงานสำรวจ
+            const empCodeOptions = [...new Set(allData.map(row => row.empcode || row.EMPCODE).filter(v => v))].sort();
+            populateSelect('empCode', empCodeOptions);
+
+            // ผู้ตรวจสอบ
+            const checkByNameOptions = [...new Set(allData.map(row => row.checkByName || row.checkbyname || row.CHECKBYNAME).filter(v => v))].sort();
+            populateSelect('checkByName', checkByNameOptions);
+
+            // สถานะงาน
+            const sttDescOptions = [...new Set(allData.map(row => row.stt_desc || row.STT_DESC).filter(v => v))].sort();
+            populateSelect('sttDesc', sttDescOptions);
+
+            // ผู้คีย์
+            const emcsByOptions = [...new Set(allData.map(row => row.EMCSby || row.emcsby || row.EMCSBY).filter(v => v))].sort();
+            populateSelect('emcsBy', emcsByOptions);
+
+            // สถานะงานคีย์ (รวมค่าว่างที่แสดงเป็น "-")
+            const emcsStatusRaw = allData.map(row => row.EMCSstatus || row.emcsstatus || row.EMCSSTATUS);
+            const emcsStatusOptions = [...new Set(emcsStatusRaw.map(v => v || '-'))].sort();
+            populateSelect('emcsStatus', emcsStatusOptions);
+        }
+
+        function populateSelect(selectId, options) {
+            const select = document.getElementById(selectId);
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                select.appendChild(option);
+            });
+        }
+
+        function performSearch() {
+            const searchNumber = document.getElementById('searchNumber').value.toLowerCase().trim();
+            const empCode = document.getElementById('empCode').value;
+            const checkByName = document.getElementById('checkByName').value;
+            const sttDesc = document.getElementById('sttDesc').value;
+            const emcsBy = document.getElementById('emcsBy').value;
+            const emcsStatus = document.getElementById('emcsStatus').value;
+
+            filteredData = allData.filter(row => {
+                // ค้นหาเลข (claim_no, notify_no, survey_no)
+                const claimNo = (row.claim_no || row.CLAIM_NO || '').toString().toLowerCase();
+                const notifyNo = (row.notify_no || row.NOTIFY_NO || '').toString().toLowerCase();
+                const surveyNo = (row.survey_no || row.SURVEY_NO || '').toString().toLowerCase();
+                const numberMatch = !searchNumber ||
+                    claimNo.includes(searchNumber) ||
+                    notifyNo.includes(searchNumber) ||
+                    surveyNo.includes(searchNumber);
+
+                // ตรวจสอบ dropdown filters
+                const empCodeMatch = !empCode || (row.empcode || row.EMPCODE) === empCode;
+                const checkByNameMatch = !checkByName || (row.checkByName || row.checkbyname || row.CHECKBYNAME) === checkByName;
+                const sttDescMatch = !sttDesc || (row.stt_desc || row.STT_DESC) === sttDesc;
+                const emcsByMatch = !emcsBy || (row.EMCSby || row.emcsby || row.EMCSBY) === emcsBy;
+                const emcsStatusMatch = !emcsStatus ||
+                    (emcsStatus === '-' ? !(row.EMCSstatus || row.emcsstatus || row.EMCSSTATUS) : (row.EMCSstatus || row.emcsstatus || row.EMCSSTATUS) === emcsStatus);
+
+                return numberMatch && empCodeMatch && checkByNameMatch && sttDescMatch && emcsByMatch && emcsStatusMatch;
+            });
+
+            currentPage = 1;
+            displayResults();
+        }
+
+        function displayResults() {
+            const tbody = document.getElementById('searchTableBody');
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+            // แสดงข้อมูลสถิติ
+            document.getElementById('resultInfo').style.display = filteredData.length > 0 ? 'flex' : 'none';
+            document.getElementById('totalResults').textContent = filteredData.length;
+            document.getElementById('currentPageDisplay').textContent = currentPage;
+            document.getElementById('totalPagesDisplay').textContent = totalPages || 1;
+
+            // ถ้าไม่มีข้อมูล
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${columns.length + 1}" class="empty-state">
+                            ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            // คำนวณข้อมูลที่จะแสดงในหน้านี้
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, filteredData.length);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            // แสดงข้อมูลในตาราง
+            tbody.innerHTML = pageData.map((row, index) => `
+                <tr>
+                    <td class="index-cell">${startIndex + index + 1}</td>
+                    ${columns.map(col => {
+                const value = row[col];
+                return `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
+            }).join('')}
+                </tr>
+            `).join('');
+
+            // สร้าง pagination
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // ปุ่ม Previous
+            html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>« ก่อนหน้า</button>`;
+
+            // ปุ่มหมายเลขหน้า
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button onclick="changePage(1)">1</button>`;
+                if (startPage > 2) html += '<button disabled>...</button>';
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += '<button disabled>...</button>';
+                html += `<button onclick="changePage(${totalPages})">${totalPages}</button>`;
+            }
+
+            // ปุ่ม Next
+            html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>ถัดไป »</button>`;
+
+            pagination.innerHTML = html;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            displayResults();
+        }
+    </script>
+</body>
+
+</html>

@@ -11,6 +11,10 @@ CORS(app)  # Enable CORS for all routes
 def index():
     return send_file('data_fetch.html')
 
+@app.route('/search_window.html')
+def search_window():
+    return send_file('search_window.html')
+
 @app.route('/api/fetch-data')
 def fetch_data():
     try:

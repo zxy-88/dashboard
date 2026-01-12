@@ -523,6 +523,31 @@
             max-width: 400px;
         }
 
+        .btn-search-window {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            font-family: 'Prompt', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            margin-left: auto;
+        }
+
+        .btn-search-window:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-search-window:active {
+            transform: translateY(0);
+        }
+
         .search-box input {
             width: 100%;
             padding: 0.75rem 1rem 0.75rem 2.75rem;
@@ -773,6 +798,7 @@
                 <div class="search-info">
                     แสดง <strong id="filteredCount">0</strong> จาก <strong id="totalCount">0</strong> รายการ
                 </div>
+                <button class="btn-search-window" onclick="openSearchWindow()">หน้าต่างค้นหา</button>
             </div>
             <div class="table-wrapper">
                 <table id="dataTable">
@@ -805,6 +831,16 @@
 
         function getChartSecondaryColor() {
             return isLightTheme() ? '#64748b' : '#94a3b8';
+        }
+
+        // ฟังก์ชันดึงสีสำหรับ chart grid ตามธีม
+        function getChartGridColor() {
+            return isLightTheme() ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)';
+        }
+
+        // ฟังก์ชันดึงสีสำหรับตัวเลขบนกราฟ (data labels) ตามธีม
+        function getChartDataLabelColor() {
+            return isLightTheme() ? '#1e293b' : '#ffffff';
         }
 
         // เก็บข้อมูลสำหรับ re-render กราฟเมื่อเปลี่ยนธีม
@@ -951,8 +987,8 @@
         }
 
         // ตัวแปรเก็บข้อมูลตารางสำหรับ filter และ sort
-        let tableData = [];
-        let tableColumns = [];
+        var tableData = [];
+        var tableColumns = [];
         let currentSortColumn = null;
         let currentSortDirection = 'asc';
 
@@ -1279,10 +1315,42 @@
                 checkbynameChartInstance.destroy();
             }
 
+            // Plugin สำหรับกำหนด minimum bar length
+            const minBarLengthPlugin = {
+                id: 'minBarLength',
+                beforeDatasetsDraw(chart) {
+                    const { chartArea } = chart;
+
+                    // คำนวณ minimum bar length (1% ของความกว้างกราฟ)
+                    const minBarLength = chartArea.width * 0.01;
+
+                    chart.data.datasets.forEach((dataset, datasetIndex) => {
+                        const meta = chart.getDatasetMeta(datasetIndex);
+                        if (!meta.hidden) {
+                            meta.data.forEach((bar, index) => {
+                                const value = dataset.data[index];
+
+                                // ถ้าค่ามากกว่า 0 แต่แท่งสั้นเกินไป ให้ขยายแท่ง
+                                if (value > 0) {
+                                    const barWidth = bar.width;
+
+                                    if (barWidth < minBarLength && barWidth > 0) {
+                                        // ปรับความกว้างของแท่งให้เป็นขั้นต่ำ
+                                        const baseX = bar.base;
+                                        bar.x = baseX + minBarLength;
+                                        bar.width = minBarLength;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+            };
+
             // สร้าง chart ใหม่ (Stacked Horizontal Bar Chart)
             checkbynameChartInstance = new Chart(ctx, {
                 type: 'bar',
-                plugins: [ChartDataLabels],
+                plugins: [ChartDataLabels, minBarLengthPlugin], // ChartDataLabels จะวาดทับหลังสุด
                 data: {
                     labels: sortedNames,
                     datasets: datasets
@@ -1344,7 +1412,7 @@
                             display: function (context) {
                                 return context.dataset.data[context.dataIndex] > 0;
                             },
-                            color: '#ffffff',
+                            color: getChartDataLabelColor(),
                             anchor: 'center',
                             align: 'center',
                             font: {
@@ -1367,7 +1435,7 @@
                             stacked: true,
                             beginAtZero: true,
                             grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
+                                color: getChartGridColor(),
                                 drawBorder: false
                             },
                             ticks: {
@@ -1547,7 +1615,7 @@
 
             console.log('✅ Sorted assignees:', sortedAssignees);
 
-            // อัพเดท stats
+            // อัพเดทจำนวนผลลัพธ์
             document.getElementById('totalFinishedJobs').textContent = filteredData.length;
             document.getElementById('totalAssignees').textContent = sortedAssignees.length;
             document.getElementById('totalSend').textContent = totalSend;
@@ -1581,10 +1649,42 @@
                 claimNoChartInstance.destroy();
             }
 
+            // Plugin สำหรับกำหนด minimum bar length (Chart 2)
+            const minBarLengthPlugin2 = {
+                id: 'minBarLength2',
+                beforeDatasetsDraw(chart) {
+                    const { chartArea } = chart;
+
+                    // คำนวณ minimum bar length (1% ของความกว้างกราฟ)
+                    const minBarLength = chartArea.width * 0.01;
+
+                    chart.data.datasets.forEach((dataset, datasetIndex) => {
+                        const meta = chart.getDatasetMeta(datasetIndex);
+                        if (!meta.hidden) {
+                            meta.data.forEach((bar, index) => {
+                                const value = dataset.data[index];
+
+                                // ถ้าค่ามากกว่า 0 แต่แท่งสั้นเกินไป ให้ขยายแท่ง
+                                if (value > 0) {
+                                    const barWidth = bar.width;
+
+                                    if (barWidth < minBarLength && barWidth > 0) {
+                                        // ปรับความกว้างของแท่งให้เป็นขั้นต่ำ
+                                        const baseX = bar.base;
+                                        bar.x = baseX + minBarLength;
+                                        bar.width = minBarLength;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+            };
+
             // สร้าง chart ใหม่ (Stacked Horizontal Bar Chart)
             claimNoChartInstance = new Chart(ctx, {
                 type: 'bar',
-                plugins: [ChartDataLabels],
+                plugins: [ChartDataLabels, minBarLengthPlugin2],
                 data: {
                     labels: sortedAssignees,
                     datasets: datasets
@@ -1653,7 +1753,7 @@
                             display: function (context) {
                                 return context.dataset.data[context.dataIndex] > 0;
                             },
-                            color: '#ffffff',
+                            color: getChartDataLabelColor(),
                             anchor: 'center',
                             align: 'center',
                             font: {
@@ -1676,7 +1776,7 @@
                             stacked: true,
                             beginAtZero: true,
                             grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
+                                color: getChartGridColor(),
                                 drawBorder: false
                             },
                             ticks: {
@@ -1737,6 +1837,18 @@
         // ฟังก์ชันซ่อน error
         function hideError() {
             document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // ฟังก์ชันเปิดหน้าต่างค้นหา
+        function openSearchWindow() {
+            // ตรวจสอบว่ามีข้อมูลหรือไม่
+            if (!tableData || tableData.length === 0) {
+                alert('ไม่มีข้อมูลที่จะแสดง กรุณาดึงข้อมูลก่อน');
+                return;
+            }
+
+            // เปิดหน้าต่างค้นหา - ข้อมูลจะถูกเข้าถึงผ่าน window.opener (ไม่มีขีดจำกัดขนาด)
+            window.open('search_window.html', '_blank', 'width=1400,height=900');
         }
 
         // Set default dates to today
